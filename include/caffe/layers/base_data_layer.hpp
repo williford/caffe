@@ -51,7 +51,7 @@ class Batch {
   Blob<Dtype> data_, label_;
 };
 
-template <typename Dtype>
+template <typename Dtype, typename TBatch>
 class BasePrefetchingDataLayer :
     public BaseDataLayer<Dtype>, public InternalThread {
  public:
@@ -74,7 +74,7 @@ class BasePrefetchingDataLayer :
   virtual void InternalThreadEntry();
   virtual void load_batch(Batch<Dtype>* batch) = 0;
 
-  Batch<Dtype> prefetch_[PREFETCH_COUNT];
+  TBatch prefetch_[PREFETCH_COUNT];
   BlockingQueue<Batch<Dtype>*> prefetch_free_;
   BlockingQueue<Batch<Dtype>*> prefetch_full_;
 

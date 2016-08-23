@@ -4,8 +4,8 @@
 
 namespace caffe {
 
-template <typename Dtype>
-void BasePrefetchingDataLayer<Dtype>::Forward_gpu(
+template <typename Dtype, typename TBatch>
+void BasePrefetchingDataLayer<Dtype, TBatch>::Forward_gpu(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   Batch<Dtype>* batch = prefetch_full_.pop("Data layer prefetch queue empty");
   // Reshape to loaded data.
@@ -26,6 +26,14 @@ void BasePrefetchingDataLayer<Dtype>::Forward_gpu(
   prefetch_free_.push(batch);
 }
 
-INSTANTIATE_LAYER_GPU_FORWARD(BasePrefetchingDataLayer);
+//INSTANTIATE_LAYER_GPU_FORWARD(BasePrefetchingDataLayer);
+
+template void BasePrefetchingDataLayer<float, Batch<float> >::Forward_gpu( \
+    const std::vector<Blob<float>*>& bottom, \
+    const std::vector<Blob<float>*>& top); \
+template void BasePrefetchingDataLayer<double, Batch<double> >::Forward_gpu( \
+    const std::vector<Blob<double>*>& bottom, \
+    const std::vector<Blob<double>*>& top);
+
 
 }  // namespace caffe

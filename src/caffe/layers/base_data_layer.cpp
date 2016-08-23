@@ -32,8 +32,8 @@ void BaseDataLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   DataLayerSetUp(bottom, top);
 }
 
-template <typename Dtype>
-BasePrefetchingDataLayer<Dtype>::BasePrefetchingDataLayer(
+template <typename Dtype, typename TBatch>
+BasePrefetchingDataLayer<Dtype, TBatch>::BasePrefetchingDataLayer(
     const LayerParameter& param)
     : BaseDataLayer<Dtype>(param),
       prefetch_free_(), prefetch_full_() {
@@ -42,8 +42,8 @@ BasePrefetchingDataLayer<Dtype>::BasePrefetchingDataLayer(
   }
 }
 
-template <typename Dtype>
-void BasePrefetchingDataLayer<Dtype>::LayerSetUp(
+template <typename Dtype, typename TBatch>
+void BasePrefetchingDataLayer<Dtype, TBatch>::LayerSetUp(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   BaseDataLayer<Dtype>::LayerSetUp(bottom, top);
   // Before starting the prefetch thread, we make cpu_data and gpu_data
@@ -72,8 +72,8 @@ void BasePrefetchingDataLayer<Dtype>::LayerSetUp(
   DLOG(INFO) << "Prefetch initialized.";
 }
 
-template <typename Dtype>
-void BasePrefetchingDataLayer<Dtype>::InternalThreadEntry() {
+template <typename Dtype, typename TBatch>
+void BasePrefetchingDataLayer<Dtype, TBatch>::InternalThreadEntry() {
 #ifndef CPU_ONLY
   cudaStream_t stream;
   if (Caffe::mode() == Caffe::GPU) {
@@ -103,8 +103,8 @@ void BasePrefetchingDataLayer<Dtype>::InternalThreadEntry() {
 #endif
 }
 
-template <typename Dtype>
-void BasePrefetchingDataLayer<Dtype>::Forward_cpu(
+template <typename Dtype, typename TBatch>
+void BasePrefetchingDataLayer<Dtype, TBatch>::Forward_cpu(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   Batch<Dtype>* batch = prefetch_full_.pop("Data layer prefetch queue empty");
   // Reshape to loaded data.
@@ -129,6 +129,9 @@ STUB_GPU_FORWARD(BasePrefetchingDataLayer, Forward);
 #endif
 
 INSTANTIATE_CLASS(BaseDataLayer);
-INSTANTIATE_CLASS(BasePrefetchingDataLayer);
+// INSTANTIATE_CLASS(BasePrefetchingDataLayer); -- macro doesn't work with two templates
+
+template class BasePrefetchingDataLayer<float, Batch<float> >; \
+template class BasePrefetchingDataLayer<double, Batch<double> >;
 
 }  // namespace caffe
