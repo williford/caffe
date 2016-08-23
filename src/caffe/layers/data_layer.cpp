@@ -13,7 +13,7 @@ namespace caffe {
 
 template <typename Dtype>
 DataLayer<Dtype>::DataLayer(const LayerParameter& param)
-  : BasePrefetchingDataLayer<Dtype>(param),
+  : BasePrefetchingDataLayer<Dtype, Batch<Dtype> >(param),
     reader_(param) {
 }
 
