@@ -306,7 +306,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 147 (last added: recurrent_param)
+// LayerParameter next available layer-specific ID: 151 (last added: window_cls_data_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -360,6 +360,8 @@ message LayerParameter {
   // The default for the engine is set by the ENGINE switch at compile-time.
   optional AccuracyParameter accuracy_param = 102;
   optional ArgMaxParameter argmax_param = 103;
+  optional BinaryAccuracyParameter binary_accuracy_param = 149;  // Noh
+  optional BNParameter bn_param = 148;  // Noh
   optional BatchNormParameter batch_norm_param = 139;
   optional BiasParameter bias_param = 141;
   optional ConcatParameter concat_param = 104;
@@ -369,6 +371,7 @@ message LayerParameter {
   optional DataParameter data_param = 107;
   optional DropoutParameter dropout_param = 108;
   optional DummyDataParameter dummy_data_param = 109;
+  optional EltwiseAccuracyParameter eltwise_accuracy_param = 147; // Noh
   optional EltwiseParameter eltwise_param = 110;
   optional ELUParameter elu_param = 140;
   optional EmbedParameter embed_param = 137;
@@ -402,6 +405,7 @@ message LayerParameter {
   optional TanHParameter tanh_param = 127;
   optional ThresholdParameter threshold_param = 128;
   optional TileParameter tile_param = 138;
+  optional WindowClsDataParameter window_cls_data_param = 150; // Noh
   optional WindowDataParameter window_data_param = 129;
 }
 
@@ -484,6 +488,27 @@ message ArgMaxParameter {
   // By default ArgMaxLayer maximizes over the flattened trailing dimensions
   // for each index of the first / num dimension.
   optional int32 axis = 3;
+}
+
+// Message that stores parameters used by BN (Batch Normalization)  layer - Noh Caffe
+message BinaryAccuracyParameter {
+  enum AccuracyMode {
+    Accuracy = 0;
+    Precision = 1;
+    Recall = 2;
+    F_measure = 3; 
+  }
+  optional AccuracyMode accuracy_mode = 1 [default = Accuracy];
+}
+// Message that stores parameters used by BN (Batch Normalization)  layer - Noh Caffe
+message BNParameter {
+  enum BNMode {
+    LEARN = 0;
+    INFERENCE = 1;
+  }
+  optional BNMode bn_mode = 3 [default = LEARN];
+  optional FillerParameter scale_filler = 1;  // The filler for the scale
+  optional FillerParameter shift_filler = 2;  // The filler for the shift
 }
 
 message ConcatParameter {
@@ -695,6 +720,30 @@ message EltwiseParameter {
   optional bool stable_prod_grad = 3 [default = true];
 }
 
+// Message that stores parameters used by EltwiseAccuracyLayer - Noh Caffe
+message EltwiseAccuracyParameter {
+  // When computing Eltwise Accuracy, count as correct by comparing the true label to
+  // the top k scoring classes.  By default, only compare to the top scoring
+  // class (i.e. argmax).
+  optional uint32 top_k = 1 [default = 1];
+  // If specified, ignore instances with the given label.
+  optional int32 ignore_label = 2;
+  // If specified, ignore instances without the given label.
+  optional int32 use_label = 3;
+}
+
+// Noh Caffe
+message RedAccuracyParameter {
+  // When computing Red Accuracy, count as correct by comparing the true label to
+  // the top k scoring classes.  By default, only compare to the top scoring
+  // class (i.e. argmax).
+  optional uint32 top_k = 1 [default = 1];
+  // If specified, ignore instances with the given label.
+  optional int32 ignore_label = 2;
+  // number of classes in ground truth label
+  optional uint32 class_num = 3;
+}
+
 // Message that stores parameters used by ELULayer
 message ELUParameter {
   // Described in:
@@ -784,6 +833,17 @@ message ImageDataParameter {
   optional uint32 new_width = 10 [default = 0];
   // Specify if the images are color or gray
   optional bool is_color = 11 [default = true];
+
+  // from https://github.com/cdmh/deeplab-public
+  // This is the value set for pixels or images where we don't know the label
+  optional int32 ignore_label = 15 [default = 255];
+  enum LabelType {
+    NONE = 0;
+    IMAGE = 1;
+    PIXEL = 2;
+  }
+  optional LabelType label_type = 16 [default = IMAGE];
+
   // DEPRECATED. See TransformationParameter. For data pre-processing, we can do
   // simple scaling and subtracting the data mean, if provided. Note that the
   // mean subtraction is always carried out before scaling.
@@ -796,6 +856,9 @@ message ImageDataParameter {
   // data.
   optional bool mirror = 6 [default = false];
   optional string root_folder = 12 [default = ""];
+
+  optional bool has_label = 13 [default = true];
+  optional int32 max_labels = 14 [default = 1];
 }
 
 message InfogainLossParameter {
@@ -1152,6 +1215,11 @@ message ThresholdParameter {
   optional float threshold = 1 [default = 0]; // Strictly positive values
 }
 
+// Message that stores parameters used by WindowClsDataLayer - Noh Caffe
+message WindowClsDataParameter { 
+  optional uint32 label_dim = 1 [default = 1];
+}
+
 message WindowDataParameter {
   // Specify the data source.
   optional string source = 1;
@@ -1289,6 +1357,7 @@ message V1LayerParameter {
   optional TanHParameter tanh_param = 37;
   optional ThresholdParameter threshold_param = 25;
   optional WindowDataParameter window_data_param = 20;
+
   optional TransformationParameter transform_param = 36;
   optional LossParameter loss_param = 42;
   optional V0LayerParameter layer = 1;
