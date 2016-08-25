@@ -9,6 +9,8 @@
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/blocking_queue.hpp"
 
+#include "caffe/layers/select_seg_binary_layer.hpp" // for BatchSeg
+
 namespace caffe {
 
 template <typename Dtype>
@@ -103,23 +105,40 @@ void BasePrefetchingDataLayer<Dtype, TBatch>::InternalThreadEntry() {
 #endif
 }
 
+template <typename Dtype>
+void Batch<Dtype>::Forward_cpu(
+    const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
+  // Reshape to loaded data.
+  top[0]->ReshapeLike(data_);
+  // Copy the data
+  caffe_copy(data_.count(), data_.cpu_data(),
+             top[0]->mutable_cpu_data());
+  DLOG(INFO) << "Prefetch copied";
+
+  // Making the assumption that current top size can be used instead 
+  //    of the top size used in LayerSetUp.
+  //if (this->output_labels_) {
+  if (top.size() > 1) {
+    // Reshape to loaded labels.
+    top[1]->ReshapeLike(label_);
+    // Copy the labels.
+    caffe_copy(label_.count(), label_.cpu_data(),
+        top[1]->mutable_cpu_data());
+  }
+}
+
+#ifdef CPU_ONLY
+STUB_GPU_FORWARD(Batch, Forward);
+#endif
+
 template <typename Dtype, typename TBatch>
 void BasePrefetchingDataLayer<Dtype, TBatch>::Forward_cpu(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   Batch<Dtype>* batch = prefetch_full_.pop("Data layer prefetch queue empty");
-  // Reshape to loaded data.
-  top[0]->ReshapeLike(batch->data_);
-  // Copy the data
-  caffe_copy(batch->data_.count(), batch->data_.cpu_data(),
-             top[0]->mutable_cpu_data());
+
+  batch->Forward_cpu(bottom, top);
+
   DLOG(INFO) << "Prefetch copied";
-  if (this->output_labels_) {
-    // Reshape to loaded labels.
-    top[1]->ReshapeLike(batch->label_);
-    // Copy the labels.
-    caffe_copy(batch->label_.count(), batch->label_.cpu_data(),
-        top[1]->mutable_cpu_data());
-  }
 
   prefetch_free_.push(batch);
 }
@@ -133,5 +152,8 @@ INSTANTIATE_CLASS(BaseDataLayer);
 
 template class BasePrefetchingDataLayer<float, Batch<float> >; \
 template class BasePrefetchingDataLayer<double, Batch<double> >;
+
+template class BasePrefetchingDataLayer<float, BatchSeg<float> >; \
+template class BasePrefetchingDataLayer<double, BatchSeg<double> >;
 
 }  // namespace caffe
