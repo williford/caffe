@@ -29,6 +29,15 @@ void BatchSeg<Dtype>::Forward_gpu(
         top[2]->mutable_gpu_data());
   }
 
+  CHECK_EQ(this->data_.height(), this->seg_.height())
+      << "The data and segmentation label should have the same height.";
+  CHECK_EQ(top[0]->height(), top[1]->height())
+      << "The data and segmentation label should have the same height.";
+  CHECK_EQ(top[0]->width(), top[1]->width())
+      << "The data and segmentation label should have the same width.";
+
+  //top[0]->Reshape(1, 1, 1, 1);
+
 }
 
 INSTANTIATE_LAYER_GPU_FORWARD(BatchSeg);

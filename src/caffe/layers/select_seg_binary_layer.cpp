@@ -53,6 +53,11 @@ void BatchSeg<Dtype>::Forward_cpu(
     caffe_copy(this->label_.count(), this->label_.cpu_data(),
         top[2]->mutable_cpu_data());
   }
+
+  CHECK_EQ(top[0]->height(), top[1]->height())
+      << "The data and label should have the same height.";
+  CHECK_EQ(top[0]->width(), top[1]->width())
+      << "The data and label should have the same width.";
 }
 
 #ifdef CPU_ONLY
@@ -143,44 +148,37 @@ void SelectSegBinaryLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bot
   //cv::Mat cv_img = ReadImageToCVMat(root_folder + lines_[lines_id_].first,
   cv::Mat cv_img = ReadImageToCVMat(root_folder + lines_[lines_id_].imgfn,
                                     new_height, new_width, is_color);
-  const int height = cv_img.rows;
-  const int width = cv_img.cols;
-
-  // CHECK(cv_img.data) << "Could not load " << lines_[lines_id_].first;
   CHECK(cv_img.data) << "Could not load " << lines_[lines_id_].imgfn;
-  // Use data_transformer to infer the expected blob shape from a cv_image.
-  vector<int> top_shape = this->data_transformer_->InferBlobShape(cv_img);
-  this->transformed_.data_.Reshape(top_shape);
-  // Reshape prefetch_data and top[0] according to the batch_size.
+
+  const int channels = cv_img.channels();
+
+  const int crop_size = this->layer_param_.transform_param().crop_size();
   const int batch_size = this->layer_param_.image_data_param().batch_size();
   CHECK_GT(batch_size, 0) << "Positive batch size required";
-  top_shape[0] = batch_size;
+
+  // ----------- "Tops"
+  top[0]->Reshape(batch_size, channels, crop_size, crop_size);
+  top[1]->Reshape(batch_size, 1, crop_size, crop_size);
+  top[2]->Reshape(batch_size, label_dim_, 1, 1);
+
+  // ----------- Prefetch data
   for (int i = 0; i < this->PREFETCH_COUNT; ++i) {
-    this->prefetch_[i].data_.Reshape(top_shape);
+    // image
+    this->prefetch_[i].data_.Reshape(batch_size, channels, crop_size, crop_size);
+    this->prefetch_[i].seg_.Reshape(batch_size, 1, crop_size, crop_size);
+    this->prefetch_[i].label_.Reshape(batch_size, label_dim_, 1, 1);
   }
-  top[0]->Reshape(top_shape);
+
+  // ----------- Transformed data
+  this->transformed_data_.Reshape(1, channels, crop_size, crop_size);
+  // transformed segmentation
+  this->transformed_seg_.Reshape(1, 1, crop_size, crop_size);     
+  this->class_label_.Reshape(1, label_dim_, 1, 1);
 
   LOG(INFO) << "output data size: " << top[0]->num() << ","
 	    << top[0]->channels() << "," << top[0]->height() << ","
 	    << top[0]->width();
-
-  // segmentation
-  top[1]->Reshape(batch_size, 1, height, width);
-  for (int i = 0; i < this->PREFETCH_COUNT; ++i) {
-    this->prefetch_[i].seg_.Reshape(batch_size, 1, height, width);
-  }
-  // transformed segmentation
-  this->transformed_.seg_.Reshape(1, 1, height, width);     
-
-  // classification
-  top[2]->Reshape(batch_size, label_dim_, 1, 1);
-  for (int i = 0; i < this->PREFETCH_COUNT; ++i) {
-    this->prefetch_[i].label_.Reshape(batch_size, label_dim_, 1, 1);
-  }
-  this->transformed_.label_.Reshape(batch_size, label_dim_, 1, 1);
-
-
-  LOG(INFO) << "output label size: " << top[1]->num() << ","
+  LOG(INFO) << "output segmentation label size: " << top[1]->num() << ","
 	    << top[1]->channels() << "," << top[1]->height() << ","
 	    << top[1]->width();
   // class label
@@ -305,29 +303,29 @@ void SelectSegBinaryLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
 
     // image data
     offset = batch->data_.offset(item_id);
-    this->transformed_.data_.set_cpu_data(prefetch_data + offset);
+    this->transformed_data_.set_cpu_data(prefetch_data + offset);
 
     // segmentation data
     offset = batchseg->seg_.offset(item_id);
-    this->transformed_.seg_.set_cpu_data(prefetch_seg + offset);
+    this->transformed_seg_.set_cpu_data(prefetch_seg + offset);
 
     this->data_transformer_->TransformImgAndSeg(cv_img_seg, 
-      &(this->transformed_.data_), &(this->transformed_.seg_),
+      &(this->transformed_data_), &(this->transformed_seg_),
       ignore_label);
     trans_time += timer.MicroSeconds();
 
     // class label
     offset = batch->label_.offset(item_id);
     //this->class_label_.set_cpu_data(prefetch_cls_label + offset);
-    this->transformed_.label_.set_cpu_data(prefetch_cls_label + offset);
-    Dtype * cls_label_data = this->transformed_.label_.mutable_cpu_data();
+    this->class_label_.set_cpu_data(prefetch_cls_label + offset);
+    Dtype * cls_label_data = this->class_label_.mutable_cpu_data();
     for (int i = 0; i < label_dim_; i++) {
       cls_label_data[i] = lines_[lines_id_].cls_label[i];
     }
 
     // modify seg label
-    Dtype * seg_label_data = this->transformed_.seg_.mutable_cpu_data();
-    int pixel_count = this->transformed_.seg_.count();
+    Dtype * seg_label_data = this->transformed_seg_.mutable_cpu_data();
+    int pixel_count = this->transformed_seg_.count();
     const int cls_label_base = this->layer_param_.select_seg_binary_param().cls_label_base();
     for (int i = 0; i < pixel_count; i++) {
       int seg_label = seg_label_data[i];

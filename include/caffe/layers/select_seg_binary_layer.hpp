@@ -52,11 +52,9 @@ class SelectSegBinaryLayer : public BasePrefetchingDataLayer<Dtype, BatchSeg<Dty
   virtual inline bool AutoTopBlobs() const { return true; }
 
  protected:
-  BatchSeg<Dtype> transformed_;
-  /* 
-  Blob<Dtype> transformed_label_; transformed_.seg_
-  Blob<Dtype> class_label_;  transformed_.label_
-  */
+  //BatchSeg<Dtype> transformed_;
+  Blob<Dtype> transformed_seg_;  // transformed_.seg_
+  Blob<Dtype> class_label_;  // transformed_.label_
 
   shared_ptr<Caffe::RNG> prefetch_rng_;
   virtual void ShuffleImages();
