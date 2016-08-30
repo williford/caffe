@@ -4,7 +4,7 @@
 
 #include "caffe/layer.hpp"
 #include "caffe/util/math_functions.hpp"
-#include "caffe/softmax_class_normalized_loss_layer.hpp"
+#include "caffe/layers/softmax_class_normalized_loss_layer.hpp"
 
 namespace caffe {
 
