@@ -33,7 +33,7 @@ class SoftmaxWithClassNormalizedLossLayer : public LossLayer<Dtype> {
       const vector<Blob<Dtype>*>& top);
 
   virtual inline const char* type() const {
-    return "SoftmaxWithClassNormalizedLossLayer";
+    return "SoftmaxWithClassNormalizedLoss";
   }
   virtual inline int ExactNumBottomBlobs() const { return -1; }
   virtual inline int MinBottomBlobs() const { return 2; }
