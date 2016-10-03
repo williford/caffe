@@ -1,3 +1,5 @@
+This fork of Caffe adds most of the changes from https://github.com/HyeonwooNoh/caffe into a more recent version of Caffe. The models that used Hyeonwoo Noh's fork will need to be updated in order to use this version of Caffe.
+
 # Caffe
 
 [![Build Status](https://travis-ci.org/BVLC/caffe.svg?branch=master)](https://travis-ci.org/BVLC/caffe)
