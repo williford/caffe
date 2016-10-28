@@ -445,7 +445,7 @@ void DataTransformer<Dtype>::TransformImgAndSeg(const std::vector<cv::Mat>& cv_i
 
   for (int h = 0; h < data_height; ++h) {
     data_ptr = cv_cropped_img.ptr<double>(h);
-    label_ptr = cv_cropped_seg.ptr<uchar>(h);
+    label_ptr = cv_cropped_seg.ptr<uchar>(h);  // class label as a scalar (input)
 
     int data_index = 0;
     int label_index = 0;

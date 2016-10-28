@@ -87,6 +87,7 @@ void SelectSegBinaryLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bot
       (new_height > 0 && new_width > 0)) << "Current implementation requires "
       "new_height and new_width to be set at the same time.";
 
+  // number of classes, e.g. 10 for MNIST, 1000 for ImageNet
   label_dim_ = this->layer_param_.window_cls_data_param().label_dim();
 
   // Read the file with filenames and labels
@@ -314,23 +315,30 @@ void SelectSegBinaryLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
       ignore_label);
     trans_time += timer.MicroSeconds();
 
-    // class label
+    // Read in the class label vector (multiple classes might be chosen).
     offset = batch->label_.offset(item_id);
-    //this->class_label_.set_cpu_data(prefetch_cls_label + offset);
     this->class_label_.set_cpu_data(prefetch_cls_label + offset);
     Dtype * cls_label_data = this->class_label_.mutable_cpu_data();
     for (int i = 0; i < label_dim_; i++) {
       cls_label_data[i] = lines_[lines_id_].cls_label[i];
     }
 
-    // modify seg label
+    /* Convert the classes of the segmentation map to a foreground /
+     * background map based on current label(s).
+     * Beforehand, the classes are from the same set of classes as cls_label.
+     * Afterwards, it is most-likely foreground or background classes.
+     */
     Dtype * seg_label_data = this->transformed_seg_.mutable_cpu_data();
     int pixel_count = this->transformed_seg_.count();
+    // cls_label_base is 0 by default
     const int cls_label_base = this->layer_param_.select_seg_binary_param().cls_label_base();
-    for (int i = 0; i < pixel_count; i++) {
+    for (int i = 0; i < pixel_count; i++) {  // for every pixel in segmentation map
       int seg_label = seg_label_data[i];
       if (seg_label != 0 && seg_label != ignore_label) {
+
         if (cls_label_base < seg_label && seg_label-1 < (label_dim_+cls_label_base)) {
+          // cls_label_data is a sparse vector
+          //  - 0 for classes not in image and 1 for classes that are
           seg_label_data[i] = cls_label_data[seg_label-cls_label_base-1];
         }
         else {
